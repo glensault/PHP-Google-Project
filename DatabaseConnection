@@ -1,0 +1,106 @@
+This is data connection class (DBconnection) designed to have another class (GetCredentials) containing the login credentials passed to it as an argument in the constructor. The script used to test and demo the correct utilization of these 2 classes is at the bottom.
+
+<?php
+class DBconnection{
+	private $conn;
+	private $Uname;
+	private $DB;
+	private $Pwd;
+	
+	public function __construct(GetCredentials $cr)
+	{	
+		$this->Uname = $cr->Uname();
+		$this->DB = $cr->DB();
+		$this->Pwd = $cr->Pwd();
+		}
+     
+	public function dbConnect($sql)
+	{
+	
+	try {
+    $conn = new PDO("mysql:host=localhost;dbname=" . $this->DB, $this->Uname, $this->Pwd);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $arr = $conn->prepare($sql);
+    $arr->execute();
+    $result = array();
+    $result = $arr->fetchAll();
+    return $result;
+		}
+	catch(PDOException $err) {
+	$e = "ERROR: Unable to connect: " . $err->getMessage();
+	echo $e;
+    return $e;
+		}
+	}
+	function __destruct(){
+		$conn = null;
+	}			
+}
+
+class GetCredentials
+{
+	public function __construct()
+	{	
+	}
+	
+	private $_db = "";
+	private $_uname = "";
+	private $_pwd = "";
+
+	public function DB($value = NULL)
+	{
+		if( $value===NULL )
+			return $this->_db;
+		else
+			$this->_db = $value;
+	}
+	public function Uname($value = NULL)
+	{
+		if( $value===NULL )
+			return $this->_uname;
+		else
+			$this->_uname = $value;
+	}
+	public function Pwd($value = NULL)
+	{
+		if( $value===NULL )
+			return $this->_pwd;
+		else
+			$this->_pwd = $value;
+	}
+		
+	public function readCreds($filename)
+	{
+		$parray = array();
+		$file = fopen($filename,"r");
+		while(! feof($file))
+		  {
+		  array_push($parray,fgets($file));
+		  }
+		fclose($file);
+		$this->Uname($parray[0]);
+		$this->Pwd($parray[1]);
+		$this->DB($parray[2]);
+	}	
+	
+}
+
+//script test
+error_reporting(E_ALL | E_STRICT);
+ini_set('display_errors', true);
+ini_set('auto_detect_line_endings', true);
+
+
+$sC = New GetCredentials();
+$sC->readCreds('dbdata.txt');
+echo $sC->DB();    
+echo $sC->Uname();
+echo $sC->Pwd();
+
+$db = New DBConnection($sC);
+$sql = 'SELECT `Member ID`, `Address 1`, City, State, Zip FROM `MemberDataAll` WHERE LENGTH(Zip) >= 5';
+
+$rArr = array();
+$rArr = $db->dbConnect($sql);
+echo $rArr[0];
+?>
