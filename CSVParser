@@ -1,0 +1,80 @@
+<php?
+
+error_reporting(E_ALL | E_STRICT);
+ini_set('display_errors', true);
+ini_set('auto_detect_line_endings', true);
+
+$inputFilename    = 'Data/ClubDataCSV.csv';
+$outputFilename   = 'testConversion.xml';
+//set the delimiter
+$delimiter = "," ;
+
+//open inputfilename
+$inputFile  = fopen( $inputFilename, 'rt' );
+
+//get input file pointers for csv parsing
+$headers = fgetcsv( $inputFile );
+
+//create new DOM document
+$doc  = new DomDocument();
+
+//set the output to clean
+$doc->formatOutput = true;
+
+//create element
+$root = $doc->createElement( 'markers' );
+
+$root = $doc->appendChild( $root );
+
+//while there are rows in the csv file
+while ( ( $row = fgetcsv( $inputFile ) ) !== FALSE ) {
+
+    //create container row
+    $container = $doc->createElement('marker');
+
+        //for loop
+        foreach ( $headers as $i => $header ) {
+			
+            //explode with the delimiter the header
+            $arr = explode( $delimiter, $header );
+
+                //for loop
+                foreach ( $arr as $key => $ar ) {
+
+                    //only accept regualar expressions matching this
+                    $child = $doc->createElement(preg_replace( "/[^A-Za-z0-9]/","",$ar ) );
+					
+                    //add the previous child to $child
+                    $child = $container->appendChild( $child );
+
+                    //explode row with delimiter
+                    $whole = explode( $delimiter, $row[$i] );
+
+                    //left and right trim anything with speechmarks
+                    $value = $doc->createTextNode( ltrim( rtrim( $whole[$key], '"') ,'"') );
+					
+                    //append previous value to $value
+                    $value = $child->appendChild( $value );
+                    //$value = $child->addAttribute($value);
+
+                }
+        }
+
+   //append to root - container
+   $root->appendChild($container);
+
+}
+
+//echo "Saving the XML file\n" ;
+
+$result = $doc->saveXML();
+
+//echo "Writing to the XML file\n" ;
+
+$handle = fopen( $outputFilename, "w" );
+
+fwrite( $handle, $result );
+
+fclose( $handle );
+
+?>
