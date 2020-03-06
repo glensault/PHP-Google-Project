@@ -1,0 +1,171 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>CVMA 2-1 Map Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<meta charset="utf-8">
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      #map {
+        height: 100%;
+        width: 90%;
+      }
+      /* Optional: Makes the sample page fill the window. */
+      <!--html, body {
+        height: 95%;
+        margin: 10;
+        padding: 10;
+      }-->
+    </style>
+    <link rel="stylesheet" type="text/css" href="CSS/style.css">
+  </head>
+<body>
+<div class="header">
+  <h1>Glen's Sandbox</h1>
+  <p>My testbed for experimentation with non-MS tech.</p>
+</div>
+<div class="topnav">
+  <a href="index.html">Main Page</a>
+  <a href="MapTest.html">Google Maps project</a>
+  <a href="CodeShare.html">PHP Code</a>
+  <a href="FWJ.html">Fun With Javascript</a>
+  <a href="http://combatvet.us">CVMA</a>
+</div>
+    <div id="map"></div>
+    <script>
+	'use strict';
+      var map;
+       function initMap() {
+        var map = new google.maps.Map(document.getElementById('map'), {
+          center: new google.maps.LatLng(42.25, -71.80),
+          zoom: 10
+        });
+           var trafficLayer = new google.maps.TrafficLayer();
+        trafficLayer.setMap(map);	
+        
+        downloadUrl('/Data/MemberDataFull.xml', function(data) {
+            var xml = data.responseXML;
+            var markers = xml.documentElement.getElementsByTagName('marker');
+			
+            Array.prototype.forEach.call(markers, function(markerElem) {
+			var street = 'USPS';
+			var city = markerElem.getAttribute('city');
+			var state = markerElem.getAttribute('state');
+			var zip = markerElem.getAttribute('zip');
+			var address = street + " " + city + " " + state + " " + zip;
+			var dir = "https://www.google.com/maps/dir//" + address + "/>";
+			var roadname = markerElem.getAttribute('road_name');
+			var phone = markerElem.getAttribute('cell_phone');
+			var email = markerElem.getAttribute('email');
+			var firstname = markerElem.getAttribute('first_name');
+			var lastname = markerElem.getAttribute('last_name'); 
+            var name = firstname + " " + lastname;
+            var type = markerElem.getAttribute('type');
+            switch(type)
+            {
+				case 'Dealer':
+					var icon = "Images/HDLogoSm.png";
+					break;
+				case 'Shop':
+					var icon = "Images/choppersm.png";
+					break;
+				case 'Home':
+					var icon = "Images/skully.png";
+					break;
+				default: 
+					var icon = "Images/skully.png";
+			}
+           
+			 console.log(name + " " + address + " " + type + " " + icon);
+			geoCodeAddress(address).then(function(response) {
+				  var pos = response;
+                  //console.log("data: " + name + " " + address + " " + pos);	
+                  var marker = new google.maps.Marker({
+					position: pos,
+					icon: icon,
+					map: map,
+					title: roadname
+					});
+					
+					// on icon click content
+					var infoWindow = new google.maps.InfoWindow;
+					var infowincontent = document.createElement('div');
+					var strong = document.createElement('strong');
+					strong.textContent = name;
+					infowincontent.appendChild(strong);
+					infowincontent.appendChild(document.createElement('br'));
+					var text = document.createElement('text');
+					text.textContent = phone;
+					infowincontent.appendChild(text);
+					if(email !== '')
+					{
+					infowincontent.appendChild(document.createElement('br'));
+					var text = document.createElement('text');
+					text.textContent = email;
+					infowincontent.appendChild(text);
+					}
+						
+					// add listener for click event
+					marker.addListener('click', function() {
+					  infoWindow.setContent(infowincontent);
+					  infoWindow.open(map, marker);
+					});
+					// add listener for mouseout event
+					marker.addListener('mouseout', function() {
+						infoWindow.close();
+					});
+				}, function(error) {
+				  console.error("Failed!", error);
+				})
+					
+			});
+			
+		});
+
+      }
+      
+      function geoCodeAddress(address) {
+			return new Promise((resolve, reject) => {
+				const geocoder = new google.maps.Geocoder();
+				geocoder.geocode({address: address}, (results, status) => {
+					if (status === 'OK') {
+						resolve(results[0].geometry.location);
+					} else {
+						reject(status);
+					}    
+				});    
+			});
+		};
+      
+      function downloadUrl(url, callback) {
+        var request = window.ActiveXObject ?
+            new ActiveXObject('Microsoft.XMLHTTP') :
+            new XMLHttpRequest;
+
+        request.onreadystatechange = function() {
+          if (request.readyState == 4) {
+            request.onreadystatechange = doNothing;
+            callback(request, request.status);
+          }
+        };
+
+        request.open('GET', url, true);
+        request.send(null);
+      }
+
+      function doNothing() {}
+		
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=<my key>&callback=initMap">
+    </script>
+
+<!--<div class="rightcolumn">
+</div>-->
+<div class="footer">
+<img src="Images/ApacheSmTrans.jpg" alt="apache logo">
+</div>
+  </body>
+</html>
