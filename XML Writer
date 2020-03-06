@@ -1,0 +1,52 @@
+<?php
+
+	
+error_reporting(E_ALL | E_STRICT);
+ini_set('display_errors', true);
+ini_set('auto_detect_line_endings', true);
+
+include 'db_info.php';
+
+ try {
+
+    $conn = new PDO("mysql:host=localhost;dbname=" . $database, $username, $password);
+
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    //echo 'Connected to the database.
+';
+
+    $sql = 'SELECT * FROM MemberDataAll';
+
+$doc = new DOMDocument('1.0', 'UTF-8');
+$doc->preserveWhiteSpace = FALSE;
+$markers = $doc->createElement('markers');
+
+    foreach ($conn->query($sql) as $row) {
+        $marker = $doc->createElement('marker');
+        $marker->setAttribute( "member_id", $row['Member ID']);
+        $marker->setAttribute( "first_name", $row['First Name']);
+		$marker->setAttribute( "last_name", $row['Last Name']);
+		$marker->setAttribute( "road_name", $row['Road Name']);
+		$marker->setAttribute( "Address_1", $row['Address 1']);
+		$marker->setAttribute( "city", $row['City']);
+		$marker->setAttribute( "state", $row['State']);
+		$marker->setAttribute( "zip", '0' . $row['Zip']);
+		$marker->setAttribute( "email", $row['Email']);
+		$marker->setAttribute( "cell_phone", $row['Cell Phone']);
+		$marker->setAttribute( "home_phone", $row['Home Phone']);
+		$markers->appendChild($marker);
+    }
+    $doc->appendChild($markers);
+    $conn = null;
+	//Header('Content-type: application/xml');
+    echo $doc->saveXML();
+    $doc->save('Data/MemberDataFull.xml');
+
+  }
+  catch(DOMException $errD) {
+	  echo "DOM error: " . $errD-> getMessage();
+  }
+  catch(PDOException $err) {
+    echo "ERROR: Unable to connect: " . $err->getMessage();
+  }
+?>
