@@ -1,0 +1,214 @@
+// AJAX/HTML front end component
+
+function callPHPScript(str)
+{
+	if (str.length==0) {
+    document.getElementById("fxMsg").innerHTML="";
+    return;
+  }
+  if (window.XMLHttpRequest) {
+    // code for IE7+, Firefox, Chrome, Opera, Safari
+    xmlhttp=new XMLHttpRequest();
+  } else {  // code for IE6, IE5
+    xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+  }
+  xmlhttp.onreadystatechange=function() {
+    if (this.readyState==4 && this.status==200) {
+		if(str=='update' || str== 'create'){
+		document.getElementById("fxMsg").innerHTML=this.responseText;
+			}else{
+			document.getElementById("fxReturn").innerHTML=this.responseText;
+		}
+    }
+  }
+  xmlhttp.open("GET","updateGoogleData.php?q="+str,true);
+  xmlhttp.send();
+}
+</script>
+
+	  <table align="center">
+		  <tr><td><button id="btnData" name="btnData" onClick="callPHPScript('update')">Update LatLng Data</button></td>
+				<td><button id="btnXml" name="btnXml" onClick="callPHPScript('create')">Create New Xml file</button></td></tr>
+				<tr><td colspan="2" align="center"><div id="fxMsg">Call Status or Error Messages.</div></td></tr>
+				<tr><td colspan="2"><hr></td></tr>
+				  <tr><td colspan="2" align="center"><form>
+									<select onchange="callPHPScript(this.value)">
+									<option value="">Select a query to run:</option>
+									<option value="active">Active Members</option>
+									<option value="inactive">Inactive</option>
+									</select>
+									</form></td></tr>
+				</table>
+				<br>
+				<div id="fxReturn" align="center">Data will display here.</div>
+    
+
+    
+  </body>
+</html>
+// server side PHP
+<?php
+$q=$_GET["q"];
+
+switch ($q)
+{
+	case "update":
+		// get records that need Lat/Lng data and run the geocoder
+		getLatLng('db_infoProd.php','SELECT `user_number`, `address1`, city, state, zip FROM `user` WHERE LENGTH(zip) >= 5 and Length(Lat) = 0');
+		break;
+	case "create":
+		// produce an updated XML file for the Google Map page
+		getXML('db_infoProd.php','SELECT concat(firstname," ", lastname) as name, roadname, email, cellphone, homephone, lat, lng FROM ipseity1_cvma21db.user where active = 1 order by lastname');
+		break;
+	case "active":
+		getQueryData('db_infoProd.php','SELECT * FROM ipseity1_cvma21db.user where active = 1');
+		break;
+	case "inactive":
+		getQueryData('db_infoProd.php','SELECT * FROM ipseity1_cvma21db.user where active = 0');
+		break;
+}
+function getQueryData($cnStrings, $sql)
+{
+	include $cnStrings;
+
+ try {
+	
+    $conn = new PDO("mysql:host=" . $hostname . ";dbname=" . $database, $username, $password);
+
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	$data = "";
+	$doc = new DOMDocument('1.0', 'UTF-8');
+	$doc->preserveWhiteSpace = FALSE;
+	$markers = $doc->createElement('markers');
+	$data = "<table cellpadding='5'>";
+    foreach ($conn->query($sql) as $row) {
+		//$data = $data . "<tr>";
+        $data = $data . "<tr><td>" . $row['user_number'] . "</td><td>" . $row['firstname'] . "</td><td>" . $row['lastname'] . "</td><td>" . $row['roadname'] . "</td><td>" . $row['email'] . "</td>";
+        $data = $data . "<td>" . $row['address1'] . "</td><td>" . $row['city'] . "</td><td>" . $row['state'] . "</td><td>" . $row['zip'] . "</td><td>" . $row['homephone'] . "</td><td>" . $row['cellphone'] . "</td></tr>";
+        //foreach($row as $name=>$value)
+        //{
+			//$data = $data . "<td>" . $value . "</td>";
+		//}
+		//$data = $data . "</tr>
+    }
+    $conn = null;
+    $data = $data . "</table>";
+    echo $data;
+
+  }
+  catch(PDOException $err) {
+    echo "ERROR: Unable to connect: " . $err->getMessage();
+  }
+	
+}
+
+function getXML($cnStrings, $sql) 
+{
+include $cnStrings;
+
+ try {
+	
+    $conn = new PDO("mysql:host=" . $hostname . ";dbname=" . $database, $username, $password);
+
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    //echo 'Connected to the database.<br>';
+
+	$doc = new DOMDocument('1.0', 'UTF-8');
+	$doc->preserveWhiteSpace = FALSE;
+	$markers = $doc->createElement('markers');
+
+    foreach ($conn->query($sql) as $row) {
+        $marker = $doc->createElement('marker');
+        $marker->setAttribute( "name", $row['name']);
+        $marker->setAttribute( "roadname", $row['roadname']);
+		$marker->setAttribute( "address", $row['address']);
+		$marker->setAttribute( "email", $row['email']);
+		$marker->setAttribute( "cellphone", $row['cellphone']);
+		$marker->setAttribute( "homephone", $row['homephone']);
+		$marker->setAttribute( "lat", $row['lat']);
+		$marker->setAttribute( "lng", $row['lng']);
+		$markers->appendChild($marker);
+    }
+    $doc->appendChild($markers);
+    $conn = null;
+	//Header('Content-type: application/xml');
+    echo $doc->saveXML();
+    $doc->save('Data/GoogleMapsData.xml');
+    echo "Data created";
+
+  }
+  catch(DOMException $errD) {
+	  echo "DOM error: " . $errD-> getMessage();
+  }
+  catch(PDOException $err) {
+    echo "ERROR: Unable to connect: " . $err->getMessage();
+  }
+}
+
+function getLatLng($cnStrings, $sql) 
+{
+include $cnStrings;
+
+ try {
+    $conn = new PDO("mysql:host=" . $hostname . ";dbname=" . $database, $username, $password);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+foreach ($conn->query($sql) as $row) {
+		$address = $row['address1'] . " " . $row['city'] . " " . $row['state'] . " " . $row['zip'];
+		$memberid = $row['user_number'];
+		 // url encode the address
+		$address = urlencode($address);
+		// google map geocode api url
+		$url = "https://maps.googleapis.com/maps/api/geocode/json?address={$address}&key=MYKEY";
+		// get the json response
+		$resp_json = file_get_contents($url);
+     
+		// decode the json
+		$resp = json_decode($resp_json, true);
+    
+		if($resp['status']=='OK'){
+			// get the important data
+			$lati = isset($resp['results'][0]['geometry']['location']['lat']) ? $resp['results'][0]['geometry']['location']['lat'] : "";
+			$longi = isset($resp['results'][0]['geometry']['location']['lng']) ? $resp['results'][0]['geometry']['location']['lng'] : "";
+			echo $lati . " " . $longi . "<br>";
+			UpdateMemberData($memberid, $lati, $longi);
+			}else{
+				echo "status error";
+			}
+			echo "sleeping...<br>";
+			sleep(1);
+			} 
+		$conn = null;
+		echo "Data update success.";
+		
+		 }
+  catch(PDOException $err) {
+    echo "ERROR: Unable to connect: " . $err->getMessage();
+	}
+}
+
+Function UpdateMemberData($memberid, $lat, $long)
+  {
+		include 'db_infoProd.php';
+		try{ 
+			$pdo = new PDO("mysql:host=162.241.225.147;dbname=" . $database, $username, $password); 
+			$pdo->setAttribute(PDO::ATTR_ERRMODE, 
+								PDO::ERRMODE_EXCEPTION); 
+		} catch(PDOException $e){ 
+			die("ERROR: Could not connect. " 
+							. $e->getMessage()); 
+		} 
+
+		try{ 
+			$sql = "UPDATE user SET lat = " . $lat . ", lng = " . $long . " WHERE `user_number` = '". $memberid . "'"; 
+			$pdo->exec($sql); 
+			echo "Records was updated successfully.<br>"; 
+			return "success";
+		} catch(PDOException $e){ 
+			die("ERROR: Could not able to execute $sql. " . $e->getMessage()); 
+			return "failure";
+		} 
+		unset($pdo); 
+ 
+  }
+?>
