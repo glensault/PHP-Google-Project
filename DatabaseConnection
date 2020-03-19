@@ -1,41 +1,3 @@
-This is data connection class (DBconnection) designed to have another class (GetCredentials) containing the login credentials passed to it as an argument in the constructor. The script used to test and demo the correct utilization of these 2 classes is at the bottom.
-
-<?php
-class DBconnection{
-	private $conn;
-	private $Uname;
-	private $DB;
-	private $Pwd;
-	
-	public function __construct(GetCredentials $cr)
-	{	
-		$this->Uname = $cr->Uname();
-		$this->DB = $cr->DB();
-		$this->Pwd = $cr->Pwd();
-		}
-     
-	public function dbConnect($sql)
-	{
-	
-	try {
-    $conn = new PDO("mysql:host=localhost;dbname=" . $this->DB, $this->Uname, $this->Pwd);
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $arr = $conn->prepare($sql);
-    $arr->execute();
-    $result = array();
-    $result = $arr->fetchAll();
-    return $result;
-		}
-	catch(PDOException $err) {
-	$e = "ERROR: Unable to connect: " . $err->getMessage();
-	echo $e;
-    return $e;
-		}
-	}
-	function __destruct(){
-		$conn = null;
-	}			
-}
 
 class GetCredentials
 {
@@ -46,6 +8,7 @@ class GetCredentials
 	private $_db = "";
 	private $_uname = "";
 	private $_pwd = "";
+	private $_hostname = "";
 
 	public function DB($value = NULL)
 	{
@@ -68,7 +31,14 @@ class GetCredentials
 		else
 			$this->_pwd = $value;
 	}
-		
+	public function Hostname($value = NULL)
+	{
+		if( $value===NULL )
+			return $this->_hostname;
+		else
+			$this->_pwd = $value;
+	}	
+	
 	public function readCreds($filename)
 	{
 		$parray = array();
@@ -81,26 +51,97 @@ class GetCredentials
 		$this->Uname($parray[0]);
 		$this->Pwd($parray[1]);
 		$this->DB($parray[2]);
+		$this->Hostname($parray[3]);
 	}	
 	
 }
+
+
+class DBconnection{
+	private $conn;
+	private $Uname;
+	private $DB;
+	private $Pwd;
+	private $Hostname;
+	
+	public function __construct(GetCredentials $cr)
+	{	
+		$this->Uname = $cr->Uname();
+		$this->DB = $cr->DB();
+		$this->Pwd = $cr->Pwd();
+		$this->Hostname = $cr->Hostname();
+		}
+     
+	public function dbQuery($sql)
+	{
+	
+	try {
+    $conn = new PDO("mysql:host=" . $this->Hostname . ";dbname=" . $this->DB, $this->Uname, $this->Pwd);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $arr = $conn->prepare($sql);
+    $arr->execute();
+    $result = array();
+    $result = $arr->fetchAll();
+    return $result;
+	}
+	catch(PDOException $err) {
+	$e = "PDO ERROR: " . $err->getMessage();
+	echo $e;
+    return $e;
+		}
+	$conn = null;
+}	
+}
+
+public function dbUpdate($sql)
+{
+	try {
+    $conn = new PDO("mysql:host=" . $this->Hostname . ";dbname=" . $this->DB, $this->Uname, $this->Pwd);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $stmt = $conn->prepare($sql);
+    $stmt->execute();
+    echo $stmt->rowCount() . " records UPDATED successfully";
+    return "Success";
+    }
+	catch(PDOException $err)
+    {
+    $e = "PDO ERROR: " . $err->getMessage();
+	echo $e;
+    return $e;
+    }
+	$conn = null;
+}
+
+public function dbInsert($sql)
+{
+	try {
+    $conn = new PDO("mysql:host=" . $this->Hostname . ";dbname=" . $this->DB, $this->Uname, $this->Pwd);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	$conn->exec($sql);
+	return "Success";
+    }
+	catch(PDOException $err)
+    {
+    $e = "PDO ERROR: " . $err->getMessage();
+	echo $e;
+    return $e;
+    }
+	$conn = null;
+}
+	function __destruct(){
+		$conn = null;
+	}	
 
 //script test
 error_reporting(E_ALL | E_STRICT);
 ini_set('display_errors', true);
 ini_set('auto_detect_line_endings', true);
 
-
 $sC = New GetCredentials();
-$sC->readCreds('dbdata.txt');
-echo $sC->DB();    
-echo $sC->Uname();
-echo $sC->Pwd();
-
+$sC->readCreds('dbdata.txt')
 $db = New DBConnection($sC);
 $sql = 'SELECT `Member ID`, `Address 1`, City, State, Zip FROM `MemberDataAll` WHERE LENGTH(Zip) >= 5';
 
 $rArr = array();
 $rArr = $db->dbConnect($sql);
 echo $rArr[0];
-?>
