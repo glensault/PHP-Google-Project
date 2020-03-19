@@ -82,14 +82,9 @@ function getQueryData($cnStrings, $sql)
 	$markers = $doc->createElement('markers');
 	$data = "<table cellpadding='5'>";
     foreach ($conn->query($sql) as $row) {
-		//$data = $data . "<tr>";
+	// this is primitive, next update I'll loop through the fields
         $data = $data . "<tr><td>" . $row['user_number'] . "</td><td>" . $row['firstname'] . "</td><td>" . $row['lastname'] . "</td><td>" . $row['roadname'] . "</td><td>" . $row['email'] . "</td>";
         $data = $data . "<td>" . $row['address1'] . "</td><td>" . $row['city'] . "</td><td>" . $row['state'] . "</td><td>" . $row['zip'] . "</td><td>" . $row['homephone'] . "</td><td>" . $row['cellphone'] . "</td></tr>";
-        //foreach($row as $name=>$value)
-        //{
-			//$data = $data . "<td>" . $value . "</td>";
-		//}
-		//$data = $data . "</tr>
     }
     $conn = null;
     $data = $data . "</table>";
@@ -131,8 +126,8 @@ include $cnStrings;
     }
     $doc->appendChild($markers);
     $conn = null;
-	//Header('Content-type: application/xml');
     echo $doc->saveXML();
+    // must add a test to see if this file already exists
     $doc->save('Data/GoogleMapsData.xml');
     echo "Data created";
 
